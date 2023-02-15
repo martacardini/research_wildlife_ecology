@@ -241,48 +241,122 @@ map(lynx_data_ctmm_night, function(X) plot(ctmm::variogram(X), level=c(0.5, 0.95
 
 # ---- HOME RANGE ESTIMATION ----
 
+# ---- HOME RANGE ESTIMATION ----
+
 
 # DAY HOME RANGE ()
 hr_day <- lynx_track_day %>% 
   mutate(
-    hr_akde=map(trk, ~ hr_akde(.,fit_ctmm(.,"ou")))
+    hr_akde=map(trk, ~ st_as_sf(., coords=c("x_", "y_"), crs=3035) %>% st_transform(., 4326) %>%
+                  mutate(x_=st_coordinates(.)[,1], y_=st_coordinates(.)[,2]) %>%
+                  st_drop_geometry(.))# %>% hr_akde(.,fit_ctmm(.,"ou")))
   )
 
-hr_day <- filter(lynx_track_day, ID %in% c("Tessa", "Patrick")) %>% 
-  mutate(
-    hr_akde=map(trk, ~ hr_akde(.,fit_ctmm(.,"ou")))
-  )
+#lynx_track <- lynx_track %>% mutate(trk = map(trk, function(x) {
+#  x %>% time_of_day(include.crepuscule=FALSE) # use 'include.crepuscule=TRUE' to get also dusk and dawn
+#} ))
 
-# calculate the home range area 
-# pivot_longer(), hr_area()
+#lynx_track_day <- lynx_track %>% dplyr::select(c(id, trk)) %>% unnest(cols = trk) %>% filter(tod_=="day")
+#lynx_track_night <- lynx_track %>% dplyr::select(c(id, trk)) %>% unnest(cols = trk) %>% filter(tod_=="night")
+
+#lynx_track_day_nest <- lynx_track_day %>% nest(data=-"id")
+#lynx_track_night_nest <- lynx_track_night %>% nest(data=-"id")
+
+
+#### day
+# make another track with the data divided by day and night
+
+# marta
+# lynx_track_day <- lynx_track_day_nest %>%
+  mutate(trk = map(by, function(x) {
+    make_track(x, x_, y_, t_, crs = st_crs(3035))}))
+
+# lynx_track_night <- lynx_track_night_nest %>%
+  mutate(trk = map(by, function(x) {
+    make_track(x, x_, y_, t_, crs = st_crs(3035))}))
+
+#matteo
+# coordinate system changement????
+# why results are the same from both the functions?
+
+lynx_track_day_trk <- lynx_track_day_nest %>%
+  mutate(trk = map(by, function(d) {
+    make_track(d, x_, y_, t_, crs = st_crs(5684)) %>%
+    transform_coords(st_crs(3035))
+  }))
+
+# i dont know what this function do + stesso errore could not find function ".CRS"
+system.time(
+  hr_akde_ou_day <- lynx_track_day_trk %>%
+    mutate(
+      hr_akde = map(trk, ~ hr_akde(., fit_ctmm(., "ou")))
+    )
+)
 
 # get the isopleth
 # 95% akde: line that includes points with 95% probability of finding the lynx in this area
-# 50% adke: line including points that have 50% of the porbability of finding the lynx there
+# transform the area from m² to km²
+# add sex column
 
-# which gives the home range area in m² and the polygon to plot. 
-# transform the area to km²
-hr_isopleths()
+iso_hr_akde_ou_day <- hr_akde_ou_day %>%
+  mutate(
+    iso_hr_akde = map(hr_akde, ~ hr_isopleths(.))
+  )
 
-# plot it together with the spatial data
-mapview()
+iso_hr_akde_ou_day_unn <- iso_hr_akde_ou_day %>% dplyr::select(c(id,iso_hr_akde)) %>%
+  unnest(cols = iso_hr_akde) %>%
+  filter(what=="estimate") %>%
+  mutate(area_km2 = as.numeric(area)/1000000) %>%
+  mutate(sex = ifelse(id %in% c("Tessa", "Kubicka", "Nora", "Matilda"), "f", "m") %>% factor())
 
-
-
-
-# NIGHT HOME RANGE
-
-
-
-
-# ---  import the corine land cover map to analyse the proportion of anthropised area---- 
-raster("data/covariates/rasters/NPBW_corine_LAEA.tif")
+# plot with the visual data
+mapview(st_as_sf(iso_hr_akde_ou_day_unn), zcol="id", burst=TRUE)
 
 
+#### night
+lynx_track_night_trk <- lynx_track_night_nest %>%
+  mutate(trk = map(data, function(d) {
+    make_track(d, x_, y_, t_, crs = st_crs(5684)) %>%
+      transform_coords(st_crs(3035))
+  }))
+
+system.time(
+  hr_akde_ou_night <- lynx_track_night_trk %>%
+    mutate(
+      hr_akde = map(trk, ~ hr_akde(., fit_ctmm(., "ou")))
+    )
+)
+
+iso_hr_akde_ou_night <- hr_akde_ou_night %>%
+  mutate(
+    iso_hr_akde = map(hr_akde, ~ hr_isopleths(.))
+  )
+
+iso_hr_akde_ou_night_unn <- iso_hr_akde_ou_night %>% dplyr::select(c(id,iso_hr_akde)) %>%
+  unnest(cols = iso_hr_akde) %>%
+  filter(what=="estimate") %>%
+  mutate(area_km2 = as.numeric(area)/1000000) %>%
+  mutate(sex = ifelse(id %in% c("Tessa", "Kubicka", "Nora", "Matilda"), "f", "m") %>% factor())
+
+# plot with visual data
+mapview(st_as_sf(iso_hr_akde_ou_night_unn), zcol="id", burst=TRUE)
+
+
+# export the datasets
+lynx_hr_day <- iso_hr_akde_ou_day_unn %>% dplyr::select(-geometry)
+# write.csv2(lynx_hr_day, "lynx_hr_day.csv")
+lynx_hr_night<- iso_hr_akde_ou_night_unn %>% dplyr::select(-geometry)
+# write.csv2(lynx_hr_night, "lynx_hr_night.csv")
 
 
 
-# ---- COVARIATE CALCULATION
+
+
+
+
+
+
+
 # ---- MODELLING ----
 library(lme4) #GLM(M)s
 library(fitdistrplus) # to create distributions
@@ -292,3 +366,75 @@ library(DHARMa) #model diagnostics
 library(effects) #plots of effects of variables of a model
 library(mgcv) #GAM(M)s
 library(itsadug) #functions for evaluation and plot of GAM(M)s
+
+
+
+# import the data from the HR obtained with the isopleth
+
+lynx_hr_day <- read.csv2("lynx_hr_day.csv")     #day
+lynx_hr_night <- read.csv2("lynx_hr_night.csv") #night
+
+# combine the 2 together to have a unique dataframe
+# add a column with the time of the day
+library("tidyverse")
+
+lynx_hr_day2 <- lynx_hr_day %>%
+  add_column(time = "day")
+lynx_hr_day2
+
+lynx_hr_night2 <- lynx_hr_night %>%
+  add_column(time = "night")
+lynx_hr_night2
+
+total_lynx_hr <- rbind(lynx_hr_day2,lynx_hr_night2)
+total_lynx_hr
+
+
+# boxplots
+
+# day home range by sex
+
+boxplot_day_sex <- ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color=sex)) + 
+ geom_boxplot() + ggtitle("Home range size during the day")
+boxplot_day_sex
+# Rotate the box plot
+boxplot_day_sex + coord_flip()
+
+summary(boxplot_day_sex)
+
+
+# night home range by sex
+
+boxplot_night_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, color=sex)) + 
+  geom_boxplot() +  ggtitle("Home range size during the night")
+boxplot_night_sex
+
+# Rotate the box plot
+boxplot_day_sex + coord_flip()
+ 
+
+
+# hr size day night
+
+boxplot_total_time_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, color=sex)) + 
+  geom_boxplot() +  ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color=sex)) + 
+  geom_boxplot()# + ggtitle("Home range size")
+
+boxplot_total_time_sex
+
+# boxplot sex-day/night
+
+library(patchwork)
+boxplot_day_sex + boxplot_night_sex
+
+# boxplot HR size by time of the day
+boxplot_area_time<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, color=time)) + 
+  geom_boxplot()
+
+boxplot_area_time
+
+# is there a significant difference in the HR size from m to f?
+sizesexglm <- glm(formula = sex ~area_km2 , family = binomial, data = lynx_hr_day)
+
+# ---  import the corine land cover map to analyse the proportion of anthropised area- 
+# raster("data/covariates/rasters/NPBW_corine_LAEA.tif")
