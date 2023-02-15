@@ -242,17 +242,25 @@ map(lynx_data_ctmm_night, function(X) plot(ctmm::variogram(X), level=c(0.5, 0.95
 # ---- HOME RANGE ESTIMATION ----
 
 
-# DAY HOME RANGE
+# DAY HOME RANGE ()
 hr_day <- lynx_track_day %>% 
   mutate(
-    hr_akde=map(track_day, ~st_drop_geometry(.) %>% 
-                  hr_akde(.,fit_ctmm(.,"ou")))
+    hr_akde=map(trk, ~ hr_akde(.,fit_ctmm(.,"ou")))
+  )
+
+hr_day <- filter(lynx_track_day, ID %in% c("Tessa", "Patrick")) %>% 
+  mutate(
+    hr_akde=map(trk, ~ hr_akde(.,fit_ctmm(.,"ou")))
   )
 
 # calculate the home range area 
 # pivot_longer(), hr_area()
 
-# get the isopleth, which gives the home range area in m² and the polygon to plot. 
+# get the isopleth
+# 95% akde: line that includes points with 95% probability of finding the lynx in this area
+# 50% adke: line including points that have 50% of the porbability of finding the lynx there
+
+# which gives the home range area in m² and the polygon to plot. 
 # transform the area to km²
 hr_isopleths()
 
