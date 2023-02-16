@@ -56,7 +56,7 @@ Nora$ID <- "Nora"
 Nora$lmt <- ymd_hms(paste(Nora$LMT_DATE, Nora$LMT_TIME), tz= "Europe/Berlin")
 
 Patrik <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Patrik_2010_007984_NpBayWa_GPS.dbf")[,c("UTC_DATE", "UTC_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Patrik$ID <- "Patrick"
+Patrik$ID <- "Patrik"
 Patrik$lmt <- ymd_hms(paste(Patrik$UTC_DATE, Patrik$UTC_TIME), tz= "UTC")
 #Patrik$UTC_TIME <- ymd_hms(Patrik$UTC_TIME, tz="UTC")
 # transform Patrik utc times into lmt
@@ -104,6 +104,8 @@ summary(all_lynx_clean)
 
 # clean the dataset by removing the outliers
 lynx_filtered <- all_lynx_clean %>% filter(LATITUDE < 50, LATITUDE > 48, LONGITUDE < 14, LONGITUDE > 12)
+
+# visualise the cleaned dataset
 hist(lynx_filtered$LATITUDE)
 hist(lynx_filtered$LONGITUDE)
 mapview(lynx_filtered[,1],lynx_filtered[,2])
@@ -170,15 +172,15 @@ str(track_day)
 str(track_night)
 
 # nest the data separated by day and night
-nest_track_day <- nest(track_day, by=(-"ID"))
-nest_track_night <- nest(track_night, by=(-"ID"))
+lynx_track_day_nest <- nest(track_day, by=(-"ID"))
+lynx_track_night_nest <- nest(track_night, by=(-"ID"))
 
 # make another track with the data divided by day and night
-lynx_track_day <- nest_track_day %>%
+lynx_track_day <- lynx_track_day_nest %>%
   mutate(trk = map(by, function(x) {
     make_track(x, x_, y_, t_, crs = st_crs(3035))}))
 
-lynx_track_night <- nest_track_night %>%
+lynx_track_night <- lynx_track_night_nest %>%
   mutate(trk = map(by, function(x) {
     make_track(x, x_, y_, t_, crs = st_crs(3035))}))
 
@@ -241,8 +243,6 @@ map(lynx_data_ctmm_night, function(X) plot(ctmm::variogram(X), level=c(0.5, 0.95
 
 # ---- HOME RANGE ESTIMATION ----
 
-# ---- HOME RANGE ESTIMATION ----
-
 
 # DAY HOME RANGE ()
 hr_day <- lynx_track_day %>% 
@@ -281,8 +281,7 @@ hr_day <- lynx_track_day %>%
 
 lynx_track_day_trk <- lynx_track_day_nest %>%
   mutate(trk = map(by, function(d) {
-    make_track(d, x_, y_, t_, crs = st_crs(5684)) %>%
-    transform_coords(st_crs(3035))
+    make_track(d, x_, y_, t_, crs = st_crs(3035))
   }))
 
 # i dont know what this function do + stesso errore could not find function ".CRS"
@@ -374,9 +373,8 @@ library(itsadug) #functions for evaluation and plot of GAM(M)s
 lynx_hr_day <- read.csv2("lynx_hr_day.csv")     #day
 lynx_hr_night <- read.csv2("lynx_hr_night.csv") #night
 
-# combine the 2 together to have a unique dataframe
+# combine the 2 data frames together to have a unique data frame with the time of the day included
 # add a column with the time of the day
-library("tidyverse")
 
 lynx_hr_day2 <- lynx_hr_day %>%
   add_column(time = "day")
@@ -390,51 +388,79 @@ total_lynx_hr <- rbind(lynx_hr_day2,lynx_hr_night2)
 total_lynx_hr
 
 
-# boxplots
+############ --- BOXPLOTS --- ################----
 
 # day home range by sex
-
-boxplot_day_sex <- ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color=sex)) + 
+boxplot_day_sex <- ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color =sex)) + 
  geom_boxplot() + ggtitle("Home range size during the day")
 boxplot_day_sex
-# Rotate the box plot
-boxplot_day_sex + coord_flip()
-
-summary(boxplot_day_sex)
-
 
 # night home range by sex
-
-boxplot_night_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, color=sex)) + 
+boxplot_night_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, fill=sex)) + 
   geom_boxplot() +  ggtitle("Home range size during the night")
 boxplot_night_sex
 
-# Rotate the box plot
-boxplot_day_sex + coord_flip()
  
-
-
-# hr size day night
-
-boxplot_total_time_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, color=sex)) + 
-  geom_boxplot() +  ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color=sex)) + 
-  geom_boxplot()# + ggtitle("Home range size")
-
-boxplot_total_time_sex
-
-# boxplot sex-day/night
-
-library(patchwork)
-boxplot_day_sex + boxplot_night_sex
-
-# boxplot HR size by time of the day
-boxplot_area_time<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, color=time)) + 
+# boxplot HR size by time of the day and by sex
+boxplot_hr_time_sex<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, fill=sex)) +
   geom_boxplot()
+boxplot_hr_time_sex
+# riga nera = mediana
 
-boxplot_area_time
+
+#### ---MODELLING --- ###
+
+#plot the histograms to check for the shape of data distribution
+hist(total_lynx_hr$area_km2)
+hist(log(total_lynx_hr$area_km2))
+
+# lm(log(area_km2) ~ sex) --> NO
+# ---> glm(area_km2 ~ sex, family=gaussian(link="log"))
+# ---> glm(area_km2 ~ sex, family=Gamma(link="identity"), data = lynx_hr_total)
 
 # is there a significant difference in the HR size from m to f?
-sizesexglm <- glm(formula = sex ~area_km2 , family = binomial, data = lynx_hr_day)
+sizesexglm_day <- glm(formula =  area_km2 ~ sex, family = binomial, data = lynx_hr_day)
+
+sizesexglm_night <- glm(formula =  area_km2 ~ sex, family = binomial, data = lynx_hr_night)
+
+lthr <- glm(area_km2 ~ sex + time, family=Gamma(link="identity"), data = total_lynx_hr)
+
+lthr <- glm(area_km2 ~ sex + time + sex:time, family=gaussian(link="log"), data = total_lynx_hr)
+# identical to area_km2 ~ sex*time
+sextimeglm <- glm(area_km2 ~ sex + time, family=gaussian(link="log"), data = total_lynx_hr)
+
+# only sex
+# only time
+# null model
+glm(area_km2 ~ 1, family=Gamma(link="identity"), data = total_lynx_hr)
+
+
+
+residualsglm <- simulateResiduals(sextimeglm)
+plot(residualsglm)
+# residuals
+residualslthr <- simulateResiduals(lthr)
+plot(residualslthr)
+# good
+
+summary(lthr)
+
+
+# comparing the models to find the best one
+# AIC()
+# install.packages("AICcmodavg")
+library(AICcmodavg)
+
+# create a list of the models
+modelshr <- list(lthr, sextimeglm)
+
+names_modelshr <- c("sex*time", "sex+time")
+
+aictab(modelshr, second.ord = T, modnames = names_modelshr)
+#second.ord = T --> small sample size, uses AICc
+#delta_AICc<2 = to take into consideration
+library(effects)
+plot(allEffects(lthr))
 
 # ---  import the corine land cover map to analyse the proportion of anthropised area- 
-# raster("data/covariates/rasters/NPBW_corine_LAEA.tif")
+#raster("data/covariates/rasters/NPBW_corine_LAEA.tif")
