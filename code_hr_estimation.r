@@ -340,10 +340,16 @@ lynx_hr_night<- iso_hr_akde_ou_night_unn %>% dplyr::select(-geometry)
 
 
 
+## MAPVIEW ---
 
+lynx_hr_night_shape <- readRDS("lynx_hr_night_shape.rds")
+lynx_hr_day_shape <- readRDS("lynx_hr_day_shape.rds")
 
+lynx_hr_night_shape_sf <- st_as_sf(lynx_hr_night_shape)
+mapview(lynx_hr_night_shape_sf, zcol="id", burst=T)
 
-
+lynx_hr_day_shape_sf <- st_as_sf(lynx_hr_day_shape)
+mapview(lynx_hr_day_shape_sf, zcol="id", burst=T)
 
 
 
@@ -389,6 +395,17 @@ boxplot_night_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, fill=sex)) +
   geom_boxplot() +  ggtitle("Home range size during the night")
 boxplot_night_sex
 
+
+# boxplot HR size by sex
+boxplot_hr_sex<- ggplot(total_lynx_hr, aes(x=sex, y=area_km2, fill=sex)) +
+  geom_boxplot()+  ggtitle("Home range size by sex")
+boxplot_hr_sex
+
+# export the boxplot
+# png("boxplot_hr_sex.png", width = 600, height = 600)
+# boxplot_hr_sex
+# dev.off()
+
  
 # boxplot HR size by time of the day and by sex
 boxplot_hr_time_sex<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, fill=sex)) +
@@ -417,8 +434,8 @@ help(Gamma)
 # ---> glm(area_km2 ~ sex, family=gaussian(link="log"), data = lynx_hr_total)
 # ---> glm(area_km2 ~ sex, family=gaussian(link="identity"), data = lynx_hr_total)
 # ---> glm(area_km2 ~ sex, family=Gamma(link="identity"), data = lynx_hr_total)
-# using family = gaussian(link="log")
 
+# using family = gaussian(link="log")
 
 # is there a significant difference in the HR size from m to f?
 
@@ -453,16 +470,23 @@ intsextimeglm <- glm(area_km2 ~ sex + time + sex:time, family=gaussian(link="log
 residualsintsextimeglm <- simulateResiduals(intsextimeglm)
 plot(residualsintsextimeglm)
 
+# limitation: few data
+
 ## family = Gamma(link = "identity")
-# testglm <- glm(formula = area_km2 ~ sex + time + sex:time, family = Gamma(link = "identity"), 
-#                data = total_lynx_hr)
+# testglm <- glm(formula = area_km2 ~ sex + time + sex:time, family = Gamma(link = "identity"), data = total_lynx_hr)
 # residualstestglm <- simulateResiduals(testglm)
 # plot(residualstestglm)
 
+
 # summary of the models
 summary(sextimeglm)
+summary(sexglm)
 summary(intsextimeglm)
 # summary(testglm)
+
+
+exp(4.794)*exp(1.7527) #HR males
+120.87+576.56
 
 
 # comparing the models to find the best one
@@ -479,7 +503,20 @@ aictab(modelshr, second.ord = T, modnames = names_modelshr)
 # second.ord = T --> small sample size, uses AICc
 # delta_AICc<2 = to take into consideration
 
+# Model selection based on AICc:
+#   
+#          K   AICc Delta_AICc AICcWt Cum.Wt      LL
+# sex      3 277.14       0.00   0.81   0.81 -134.82
+# sex+time 4 280.31       3.16   0.17   0.97 -134.82
+# sex*time 5 283.89       6.75   0.03   1.00 -134.80
+# null     2 295.11      17.97   0.00   1.00 -145.20
+# time     3 297.89      20.75   0.00   1.00 -145.20
 
-# plot the models
-library(effects)
-plot(allEffects(lthr))
+# the best model to describe our data variability is the sexglm, which doesen't take into consideration the time of the day
+# that means that the time of the day is not useful to describe variations in the HR size
+# the sex is the main driver of variability
+# the timeglm is even worste that the null model
+
+
+
+
