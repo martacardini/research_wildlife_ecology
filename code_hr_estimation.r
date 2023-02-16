@@ -1,9 +1,8 @@
 # R code for monitoring lynx Home Range
 
-# research questions:#
-# HOW DOES THE HR CHANGES IN RESPECTTO THE TIME OF THE DAY?
-# is it bigger IN THE NIGHT? 
-#--> IF WE HAVE TIME: compare the HR size of lynx in respect to the distance from anthropized areas. 
+# research questions:
+# DOES THE HR CHANGES IN RESPECT TO THE TIME OF THE DAY?is it bigger IN THE NIGHT? 
+# DO MALES HAVE BIGGER HR THAN FEMALES?
 
 # setting the working directory
 setwd("uniBO/research wildlife ecology/R Material - WG3 HR & WG4 HS")
@@ -22,41 +21,41 @@ library(ctmm)
 
 
 
-# import the data of the lynx, extract the needed columns, add the ID column, add columns with date and time together, create timestamp column ---- 
+# import the data of the lynx, extract the needed columns, add the id column, add columns with date and time together, create timestamp column ---- 
 Ctirad <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Ctirad_2011_010020_NpSumava_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Ctirad$ID <- "Ctirad"
+Ctirad$id <- "Ctirad"
 Ctirad$lmt <- ymd_hms(paste(Ctirad$LMT_DATE, Ctirad$LMT_TIME), tz= "Europe/Berlin") # local time zone
 
 Emanuel <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Emanuel_2010_007987_NpSumava_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Emanuel$ID <- "Emanuel"
+Emanuel$id <- "Emanuel"
 Emanuel$lmt <- ymd_hms(paste(Emanuel$LMT_DATE, Emanuel$LMT_TIME), tz= "Europe/Berlin")
 
 Kika <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Kika_2011_008899_NpBayWa_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Kika$ID <- "Kika"
+Kika$id <- "Kika"
 Kika$lmt <- ymd_hms(paste(Kika$LMT_DATE, Kika$LMT_TIME), tz= "Europe/Berlin")
 
 Kubicka <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Kubicka_2011_005324_NpSumava_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Kubicka$ID <- "Kubicka" 
+Kubicka$id <- "Kubicka" 
 Kubicka$lmt <- ymd_hms(paste(Kubicka$LMT_DATE, Kubicka$LMT_TIME), tz= "Europe/Berlin")
 
 Matilda <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Matilda_2011_010067_NpSumava_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Matilda$ID <- "Matilda"
+Matilda$id <- "Matilda"
 Matilda$lmt <- ymd_hms(paste(Matilda$LMT_DATE, Matilda$LMT_TIME), tz= "Europe/Berlin")
 
 Milan <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Milan_2008_005327_NpBayWa_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Milan$ID <- "Milan"
+Milan$id <- "Milan"
 Milan$lmt <- ymd_hms(paste(Milan$LMT_DATE, Milan$LMT_TIME), tz= "Europe/Berlin")
 
 Nimo <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Nimo_2012_007986_NpSumava_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Nimo$ID <- "Nimo"
+Nimo$id <- "Nimo"
 Nimo$lmt <- ymd_hms(paste(Nimo$LMT_DATE, Nimo$LMT_TIME), tz= "Europe/Berlin")
 
 Nora <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Nora_2007_002848_NpBayWa_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Nora$ID <- "Nora"
+Nora$id <- "Nora"
 Nora$lmt <- ymd_hms(paste(Nora$LMT_DATE, Nora$LMT_TIME), tz= "Europe/Berlin")
 
 Patrik <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Patrik_2010_007984_NpBayWa_GPS.dbf")[,c("UTC_DATE", "UTC_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Patrik$ID <- "Patrik"
+Patrik$id <- "Patrik"
 Patrik$lmt <- ymd_hms(paste(Patrik$UTC_DATE, Patrik$UTC_TIME), tz= "UTC")
 #Patrik$UTC_TIME <- ymd_hms(Patrik$UTC_TIME, tz="UTC")
 # transform Patrik utc times into lmt
@@ -64,7 +63,7 @@ Patrik$lmt <- with_tz(Patrik$lmt, tzone = "Europe/Berlin")
 # Patrick$LMT_DATE<- with_tz(Patrik$lmt, tzone = "Europe/Berlin")
 
 Tessa <- read.dbf("data/gps_data_lynx_bfnp/Luchs_Tessa_2011_010068_NpBayWa_GPS.dbf")[,c("LMT_DATE", "LMT_TIME", "LATITUDE", "LONGITUDE", "HEIGHT", "TEMP")]
-Tessa$ID <- "Tessa"
+Tessa$id <- "Tessa"
 Tessa$lmt <- ymd_hms(paste(Tessa$LMT_DATE, Tessa$LMT_TIME), tz= "Europe/Berlin")
 
 # delete the columns with the separated time and date 
@@ -118,8 +117,8 @@ lynx_filtered$days <- as.Date(lynx_filtered$lmt)
 
 
 # histogram for the lynx data, by day --> identify the outliers
-for(i in unique(lynx_filtered$ID)){
-  hist(filter(lynx_filtered,ID==i)$lmt, breaks = "days", main = i)
+for(i in unique(lynx_filtered$id)){
+  hist(filter(lynx_filtered,id==i)$lmt, breaks = "days", main = i)
 }
 
 # add new column to identify the rows
@@ -130,8 +129,8 @@ lynx_filtered_new <-  lynx_filtered %>% filter(!record %in% c(8623:8638), !recor
 
 
 # plot the cleaned data, to verify if it worked
-for(i in unique(lynx_filtered_new$ID)){
-  hist(filter(lynx_filtered_new,ID==i)$lmt, breaks = "days", main = i)
+for(i in unique(lynx_filtered_new$id)){
+  hist(filter(lynx_filtered_new,id==i)$lmt, breaks = "days", main = i)
 }
 
 
@@ -147,8 +146,8 @@ dev.off()
 # --- MAKE A TRAK ----
 str(lynx_filtered_new)
 
-# nest the data by individual ID
-nestedlynx <- nest(lynx_filtered_new, by= -"ID")
+# nest the data by individual id
+nestedlynx <- nest(lynx_filtered_new, by= -"id")
 
 # make a trak
 # mutate() to add new column trk in the nested data
@@ -172,8 +171,8 @@ str(track_day)
 str(track_night)
 
 # nest the data separated by day and night
-lynx_track_day_nest <- nest(track_day, by=(-"ID"))
-lynx_track_night_nest <- nest(track_night, by=(-"ID"))
+lynx_track_day_nest <- nest(track_day, by=(-"id"))
+lynx_track_night_nest <- nest(track_night, by=(-"id"))
 
 # make another track with the data divided by day and night
 lynx_track_day <- lynx_track_day_nest %>%
@@ -193,7 +192,7 @@ lynx_track_day_nsd <- lynx_track_day %>% mutate(trk=map(trk,~ add_nsd(.)))
 nsd_plot_day <- map(lynx_track_day_nsd$trk, function(X)
   ggplot(X, aes(x = t_, y = nsd_)) + geom_path())
 # add id
-for (i in 1:length(lynx_track_day_nsd$ID)) { nsd_plot_day[[i]] <- nsd_plot_day[[i]] + ggtitle(lynx_track_day_nsd$ID[i])  }
+for (i in 1:length(lynx_track_day_nsd$id)) { nsd_plot_day[[i]] <- nsd_plot_day[[i]] + ggtitle(lynx_track_day_nsd$id[i])  }
 
 nsd_plot_day
 
@@ -206,7 +205,7 @@ lynx_track_night_nsd <- lynx_track_night %>% mutate(trk=map(trk,~ add_nsd(.)))
 nsd_plot_night <- map(lynx_track_night_nsd$trk, function(X)
   ggplot(X, aes(x = t_, y = nsd_)) + geom_path())
 # add id
-for (i in 1:length(lynx_track_night_nsd$ID)) { nsd_plot_night[[i]] <- nsd_plot_night[[i]] + ggtitle(lynx_track_night_nsd$ID[i])  }
+for (i in 1:length(lynx_track_night_nsd$id)) { nsd_plot_night[[i]] <- nsd_plot_night[[i]] + ggtitle(lynx_track_night_nsd$id[i])  }
 
 nsd_plot_night
 
@@ -219,7 +218,7 @@ nsd_plot_night
 # we need to use the raw data separated by time of the day
 # transform the coordination system back to latitude and longitude (from 3035 to 4326)
 
-lynx_data_ctmm_day <- track_day %>% dplyr::select(ID, timestamp=t_, longitude=x_, latitude=y_) %>%
+lynx_data_ctmm_day <- track_day %>% dplyr::select(id, timestamp=t_, longitude=x_, latitude=y_) %>%
   st_as_sf(coords=c("longitude", "latitude"), crs=3035) %>% st_transform(4326) %>%
   mutate(longitude=st_coordinates(.)[,1], latitude=st_coordinates(.)[,2]) %>% st_drop_geometry() %>% 
   ctmm::as.telemetry(.)
@@ -232,7 +231,7 @@ map(lynx_data_ctmm_day, function(X) plot(ctmm::variogram(X), level=c(0.5, 0.95))
 
 #same as the day
 
-lynx_data_ctmm_night <- track_night %>% dplyr::select(ID, timestamp=t_, longitude=x_, latitude=y_) %>%
+lynx_data_ctmm_night <- track_night %>% dplyr::select(id, timestamp=t_, longitude=x_, latitude=y_) %>%
   st_as_sf(coords=c("longitude", "latitude"), crs=3035) %>% st_transform(4326) %>%
   mutate(longitude=st_coordinates(.)[,1], latitude=st_coordinates(.)[,2]) %>% st_drop_geometry() %>% 
   ctmm::as.telemetry(.)
@@ -345,12 +344,19 @@ lynx_hr_night<- iso_hr_akde_ou_night_unn %>% dplyr::select(-geometry)
 lynx_hr_night_shape <- readRDS("lynx_hr_night_shape.rds")
 lynx_hr_day_shape <- readRDS("lynx_hr_day_shape.rds")
 
+# night hr map
 lynx_hr_night_shape_sf <- st_as_sf(lynx_hr_night_shape)
 mapview(lynx_hr_night_shape_sf, zcol="id", burst=T)
 
+malesn <- subset(lynx_hr_night_shape_sf, sex=="m")
+mapview(malesn, zcol="id", burst=T)
+
+# day hr map
 lynx_hr_day_shape_sf <- st_as_sf(lynx_hr_day_shape)
 mapview(lynx_hr_day_shape_sf, zcol="id", burst=T)
 
+males <- subset(lynx_hr_day_shape_sf, sex=="m")
+mapview(males, zcol="id", burst=T)
 
 
 # ---- MODELLING ----
@@ -389,26 +395,16 @@ total_lynx_hr # database with all the
 boxplot_day_sex <- ggplot(lynx_hr_day, aes(x=sex, y=area_km2, color =sex)) + 
  geom_boxplot() + ggtitle("Home range size during the day")
 boxplot_day_sex
+# HR of males much bigger than females during the day 
 
 # night home range by sex
 boxplot_night_sex <- ggplot(lynx_hr_night, aes(x=sex, y=area_km2, fill=sex)) + 
   geom_boxplot() +  ggtitle("Home range size during the night")
 boxplot_night_sex
+# HR of males much bigger than females during the night
 
-
-# boxplot HR size by sex
-boxplot_hr_sex<- ggplot(total_lynx_hr, aes(x=sex, y=area_km2, fill=sex)) +
-  geom_boxplot()+  ggtitle("Home range size by sex")
-boxplot_hr_sex
-
-# export the boxplot
-# png("boxplot_hr_sex.png", width = 600, height = 600)
-# boxplot_hr_sex
-# dev.off()
-
- 
 # boxplot HR size by time of the day and by sex
-boxplot_hr_time_sex<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, fill=sex)) +
+boxplot_hr_time_sex<- ggplot(total_lynx_hr, aes(x=sex, y=area_km2, fill=time)) +
   geom_boxplot()+  ggtitle("Home range size by time of the day")
 boxplot_hr_time_sex
 
@@ -416,6 +412,21 @@ boxplot_hr_time_sex
 # png("boxplot_hr_time_sex.png", width = 600, height = 600)
 # boxplot_hr_time_sex
 # dev.off()
+
+# boxplot HR size by sex
+boxplot_hr_sex<- ggplot(total_lynx_hr, aes(x=sex, y=area_km2, fill=sex)) +
+  geom_boxplot()+  ggtitle("Home range size by sex")
+boxplot_hr_sex
+# HR of males much bigger than females indipendently from the time of the day
+
+
+# export the boxplot
+# png("boxplot_hr_sex.png", width = 600, height = 600)
+# boxplot_hr_sex
+# dev.off()
+
+ 
+
 
 # riga nera = mediana
 
@@ -427,7 +438,6 @@ hist(total_lynx_hr$area_km2)
 hist(log(total_lynx_hr$area_km2))
 
 # not normal distribution --> glm
-help(Gamma)
 
 # lm(log(area_km2) ~ sex) --> NO
 # possible family to use: 
@@ -477,16 +487,82 @@ plot(residualsintsextimeglm)
 # residualstestglm <- simulateResiduals(testglm)
 # plot(residualstestglm)
 
+install.packages("sjPlot")
+library(sjPlot)
+plot_model(intsextimeglm, type="est")
+plot_model(intsextimeglm, type="pred", terms=c("sex", "time"))
+
+plot_model(sexglm, type="pred")
+
+
 
 # summary of the models
-summary(sextimeglm)
+summary(timeglm)
 summary(sexglm)
+summary(sextimeglm)
 summary(intsextimeglm)
 # summary(testglm)
 
+# summary(sexglm)
+# Call:
+#   glm(formula = area_km2 ~ sex, family = gaussian(link = "log"),
+#       data = total_lynx_hr)
+# 
+# Deviance Residuals:
+#   Min       1Q   Median       3Q      Max
+# -369.03  -128.17    -1.85    97.21   414.94
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)
+# (Intercept)   4.9053     0.5654   8.675 7.58e-08 ***
+#   sexm          1.6452     0.5724   2.874   0.0101 *
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for gaussian family taken to be 46614.77)
+# 
+# Null deviance: 2369061  on 19  degrees of freedom
+# Residual deviance:  839066  on 18  degrees of freedom
+# AIC: 275.64
+# 
+# Number of Fisher Scoring iterations: 5
 
-exp(4.794)*exp(1.7527) #HR males
-120.87+576.56
+exp(4.9053) #HR females
+# [1] 135.0034 # hr in km2 f
+exp(4.9053)*exp(1.6452) #HR males
+# [1] 699.5939 # average hr km2 m
+exp(1.6452)
+# [1] 5.182046
+# without changing any other parameters but only looking at the sex, 
+# the HR of males is, on average, 5.182046 times bigger than the HR of females, with a significant p-value
+
+
+ summary(sextimeglm)
+# Call:
+#   glm(formula = area_km2 ~ sex + time, family = gaussian(link = "log"), 
+#       data = total_lynx_hr)
+# 
+# Deviance Residuals: 
+#   Min       1Q   Median       3Q      Max  
+# -365.15  -130.10    -2.67    97.32   411.08  
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)  4.90028    0.58860   8.325 2.11e-07 ***
+#   sexm         1.64463    0.58861   2.794   0.0125 *  
+#   timenight    0.01107    0.18110   0.061   0.9520    
+# ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for gaussian family taken to be 49345.98)
+# 
+# Null deviance: 2369061  on 19  degrees of freedom
+# Residual deviance:  838882  on 17  degrees of freedom
+# AIC: 277.64
+# 
+# Number of Fisher Scoring iterations: 5
+
+
 
 
 # comparing the models to find the best one
@@ -516,7 +592,4 @@ aictab(modelshr, second.ord = T, modnames = names_modelshr)
 # that means that the time of the day is not useful to describe variations in the HR size
 # the sex is the main driver of variability
 # the timeglm is even worste that the null model
-
-
-
 
