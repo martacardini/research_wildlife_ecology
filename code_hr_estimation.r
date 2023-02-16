@@ -263,28 +263,16 @@ hr_day <- lynx_track_day %>%
 #lynx_track_night_nest <- lynx_track_night %>% nest(data=-"id")
 
 
-#### day
 # make another track with the data divided by day and night
 
-# marta
-# lynx_track_day <- lynx_track_day_nest %>%
-  mutate(trk = map(by, function(x) {
-    make_track(x, x_, y_, t_, crs = st_crs(3035))}))
-
-# lynx_track_night <- lynx_track_night_nest %>%
-  mutate(trk = map(by, function(x) {
-    make_track(x, x_, y_, t_, crs = st_crs(3035))}))
-
-#matteo
-# coordinate system changement????
-# why results are the same from both the functions?
+#### day
 
 lynx_track_day_trk <- lynx_track_day_nest %>%
   mutate(trk = map(by, function(d) {
     make_track(d, x_, y_, t_, crs = st_crs(3035))
   }))
 
-# i dont know what this function do + stesso errore could not find function ".CRS"
+# calculate how much time takes the function to work
 system.time(
   hr_akde_ou_day <- lynx_track_day_trk %>%
     mutate(
@@ -308,15 +296,17 @@ iso_hr_akde_ou_day_unn <- iso_hr_akde_ou_day %>% dplyr::select(c(id,iso_hr_akde)
   mutate(area_km2 = as.numeric(area)/1000000) %>%
   mutate(sex = ifelse(id %in% c("Tessa", "Kubicka", "Nora", "Matilda"), "f", "m") %>% factor())
 
-# plot with the visual data
+# plot the day home ranges with the visual data
 mapview(st_as_sf(iso_hr_akde_ou_day_unn), zcol="id", burst=TRUE)
 
 
 #### night
+
+# repeat same processes as before
+
 lynx_track_night_trk <- lynx_track_night_nest %>%
   mutate(trk = map(data, function(d) {
-    make_track(d, x_, y_, t_, crs = st_crs(5684)) %>%
-      transform_coords(st_crs(3035))
+    make_track(d, x_, y_, t_, crs = st_crs(3035)) 
   }))
 
 system.time(
@@ -337,7 +327,8 @@ iso_hr_akde_ou_night_unn <- iso_hr_akde_ou_night %>% dplyr::select(c(id,iso_hr_a
   mutate(area_km2 = as.numeric(area)/1000000) %>%
   mutate(sex = ifelse(id %in% c("Tessa", "Kubicka", "Nora", "Matilda"), "f", "m") %>% factor())
 
-# plot with visual data
+
+# plot the night home ranges with visual data
 mapview(st_as_sf(iso_hr_akde_ou_night_unn), zcol="id", burst=TRUE)
 
 
@@ -374,18 +365,16 @@ lynx_hr_day <- read.csv2("lynx_hr_day.csv")     #day
 lynx_hr_night <- read.csv2("lynx_hr_night.csv") #night
 
 # combine the 2 data frames together to have a unique data frame with the time of the day included
-# add a column with the time of the day
+# add a column with the time of the day ("day" or "night")
 
 lynx_hr_day2 <- lynx_hr_day %>%
   add_column(time = "day")
-lynx_hr_day2
 
 lynx_hr_night2 <- lynx_hr_night %>%
   add_column(time = "night")
-lynx_hr_night2
 
 total_lynx_hr <- rbind(lynx_hr_day2,lynx_hr_night2)
-total_lynx_hr
+total_lynx_hr # database with all the 
 
 
 ############ --- BOXPLOTS --- ################----
@@ -403,8 +392,14 @@ boxplot_night_sex
  
 # boxplot HR size by time of the day and by sex
 boxplot_hr_time_sex<- ggplot(total_lynx_hr, aes(x=time, y=area_km2, fill=sex)) +
-  geom_boxplot()
+  geom_boxplot()+  ggtitle("Home range size by time of the day")
 boxplot_hr_time_sex
+
+# export the boxplot
+# png("boxplot_hr_time_sex.png", width = 600, height = 600)
+# boxplot_hr_time_sex
+# dev.off()
+
 # riga nera = mediana
 
 
@@ -414,36 +409,60 @@ boxplot_hr_time_sex
 hist(total_lynx_hr$area_km2)
 hist(log(total_lynx_hr$area_km2))
 
+# not normal distribution --> glm
+help(Gamma)
+
 # lm(log(area_km2) ~ sex) --> NO
-# ---> glm(area_km2 ~ sex, family=gaussian(link="log"))
+# possible family to use: 
+# ---> glm(area_km2 ~ sex, family=gaussian(link="log"), data = lynx_hr_total)
+# ---> glm(area_km2 ~ sex, family=gaussian(link="identity"), data = lynx_hr_total)
 # ---> glm(area_km2 ~ sex, family=Gamma(link="identity"), data = lynx_hr_total)
+# using family = gaussian(link="log")
+
 
 # is there a significant difference in the HR size from m to f?
-sizesexglm_day <- glm(formula =  area_km2 ~ sex, family = binomial, data = lynx_hr_day)
 
-sizesexglm_night <- glm(formula =  area_km2 ~ sex, family = binomial, data = lynx_hr_night)
+# area_km2 ~ sex
+sexglm <- glm(area_km2 ~ sex, family=gaussian(link="log"), data = total_lynx_hr)
+# DHARMa residuals
+residualssexglm <- simulateResiduals(sexglm)
+plot(residualssexglm)
 
-lthr <- glm(area_km2 ~ sex + time, family=Gamma(link="identity"), data = total_lynx_hr)
+# area_km2 ~ time
+timeglm <- glm(area_km2 ~ time, family=gaussian(link="log"), data = total_lynx_hr)
+# DHARMa residuals
+residualstimeglm <- simulateResiduals(timeglm)
+plot(residualstimeglm)
 
-lthr <- glm(area_km2 ~ sex + time + sex:time, family=gaussian(link="log"), data = total_lynx_hr)
-# identical to area_km2 ~ sex*time
+# null model area_km2 ~ 1
+nullglm <- glm(area_km2 ~ 1, family=gaussian(link="log"), data = total_lynx_hr)
+# DHARMa residuals
+residualsnullglm <- simulateResiduals(nullglm)
+plot(residualsnullglm)
+
+# area_km2 ~ sex + time
 sextimeglm <- glm(area_km2 ~ sex + time, family=gaussian(link="log"), data = total_lynx_hr)
+# DHARMa residuals
+residualssextimeglm <- simulateResiduals(sextimeglm)
+plot(residualssextimeglm)
 
-# only sex
-# only time
-# null model
-glm(area_km2 ~ 1, family=Gamma(link="identity"), data = total_lynx_hr)
+# area_km2 ~ sex + time + sex:time
+intsextimeglm <- glm(area_km2 ~ sex + time + sex:time, family=gaussian(link="log"), data = total_lynx_hr)
+# identical to area_km2 ~ sex*time
+# DHARMa residuals
+residualsintsextimeglm <- simulateResiduals(intsextimeglm)
+plot(residualsintsextimeglm)
 
+## family = Gamma(link = "identity")
+# testglm <- glm(formula = area_km2 ~ sex + time + sex:time, family = Gamma(link = "identity"), 
+#                data = total_lynx_hr)
+# residualstestglm <- simulateResiduals(testglm)
+# plot(residualstestglm)
 
-
-residualsglm <- simulateResiduals(sextimeglm)
-plot(residualsglm)
-# residuals
-residualslthr <- simulateResiduals(lthr)
-plot(residualslthr)
-# good
-
-summary(lthr)
+# summary of the models
+summary(sextimeglm)
+summary(intsextimeglm)
+# summary(testglm)
 
 
 # comparing the models to find the best one
@@ -452,15 +471,15 @@ summary(lthr)
 library(AICcmodavg)
 
 # create a list of the models
-modelshr <- list(lthr, sextimeglm)
+modelshr <- list(sexglm, timeglm, nullglm, sextimeglm, intsextimeglm)
 
-names_modelshr <- c("sex*time", "sex+time")
+names_modelshr <- c("sex", "time", "null", "sex+time", "sex*time")
 
 aictab(modelshr, second.ord = T, modnames = names_modelshr)
-#second.ord = T --> small sample size, uses AICc
-#delta_AICc<2 = to take into consideration
+# second.ord = T --> small sample size, uses AICc
+# delta_AICc<2 = to take into consideration
+
+
+# plot the models
 library(effects)
 plot(allEffects(lthr))
-
-# ---  import the corine land cover map to analyse the proportion of anthropised area- 
-#raster("data/covariates/rasters/NPBW_corine_LAEA.tif")
